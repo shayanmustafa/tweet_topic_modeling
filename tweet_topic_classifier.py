@@ -81,14 +81,23 @@ cdf['text'] = processed_docs
 
 
 def train_model(clf, x_train, y_train, x_test, y_test):
-    model = clf.fit(x_train, y_train)    
-    pred = model.predict(x_test)    
+    clf = clf.fit(x_train, y_train)    
+    pred = clf.predict(x_test)    
+    
+    tweet = "This is a tweet about Science and Technology, wow!"
+    print("Predicting tweet: {}".format(tweet))
+    custom_pred = clf.predict(count_vect.transform([tweet]))
+    print("Result: {}".format(encoder.inverse_transform(custom_pred)))
+    
     return metrics.accuracy_score(pred, y_test)
 
 #NB
+print ("~ Using Naive Bayes ~ ")
 accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y)
-print ("NB, Count Vectors: {}%".format(round(accuracyNB*100, 3)))
+print ("Accuracy: {}%".format(round(accuracyNB*100, 3)))
 
 #SVC
+print()
+print ("~ Using Linear SVC ~ ")
 accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y)
-print ("SVC: {}%".format(round(accuracySVC*100, 3)))
+print ("Accuracy: {}%".format(round(accuracySVC*100, 3)))
