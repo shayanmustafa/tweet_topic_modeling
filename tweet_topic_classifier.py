@@ -15,6 +15,8 @@ from nltk.stem.porter import *
 import nltk
 
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
+
+import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn import decomposition, ensemble
 
@@ -57,6 +59,10 @@ xtrain_count =  count_vect.transform(train_x)
 xvalid_count =  count_vect.transform(valid_x)
 #print(xtrain_count[0])
 
+#tfidf_transformer = TfidfTransformer()
+#X_train_tfidf = tfidf_transformer.fit_transform(xtrain_count)
+#X_valid_tfidf = tfidf_transformer.fit_transform(xvalid_count)
+
 stemmer = SnowballStemmer('english')
 
 def lemmatize_stemming(text_to_preprocess):
@@ -73,17 +79,22 @@ def preprocess(text_to_preprocess):
 processed_docs = documents['text'].map(preprocess)
 cdf['text'] = processed_docs
 
-#print(xtrain_count)
 
-def train_model(classifier, feature_vector_train, label, feature_vector_valid):
-    # fit the training dataset on the classifier
-    classifier.fit(feature_vector_train, label)
-    
-    # predict the labels on validation dataset
-    predictions = classifier.predict(feature_vector_valid)
-    
-    return metrics.accuracy_score(predictions, valid_y)
+# Initialize NB Model
+clf = naive_bayes.MultinomialNB(alpha=0.1)
+model = clf.fit(xtrain_count, train_y)
 
-# Naive Bayes on Count Vectors
-accuracy = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count)
-print ("NB, Count Vectors: ", accuracy)
+# Predict values on test data
+pred = clf.predict(xvalid_count)
+
+accuracy = metrics.accuracy_score(pred, valid_y)
+print ("NB, Count Vectors: {}%".format(round(accuracy*100, 3)))
+
+svc = svm.LinearSVC(C=0.1)
+
+svc.fit(xtrain_count, train_y)
+y_pred = svc.predict(xvalid_count)
+
+accuracySVC = metrics.accuracy_score(y_pred, valid_y)
+
+print ("SVC: {}%".format(round(accuracySVC*100, 3)))
