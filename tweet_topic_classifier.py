@@ -80,21 +80,15 @@ processed_docs = documents['text'].map(preprocess)
 cdf['text'] = processed_docs
 
 
-# Initialize NB Model
-clf = naive_bayes.MultinomialNB(alpha=0.1)
-model = clf.fit(xtrain_count, train_y)
+def train_model(clf, x_train, y_train, x_test, y_test):
+    model = clf.fit(x_train, y_train)    
+    pred = model.predict(x_test)    
+    return metrics.accuracy_score(pred, y_test)
 
-# Predict values on test data
-pred = clf.predict(xvalid_count)
+#NB
+accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y)
+print ("NB, Count Vectors: {}%".format(round(accuracyNB*100, 3)))
 
-accuracy = metrics.accuracy_score(pred, valid_y)
-print ("NB, Count Vectors: {}%".format(round(accuracy*100, 3)))
-
-svc = svm.LinearSVC(C=0.1)
-
-svc.fit(xtrain_count, train_y)
-y_pred = svc.predict(xvalid_count)
-
-accuracySVC = metrics.accuracy_score(y_pred, valid_y)
-
+#SVC
+accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y)
 print ("SVC: {}%".format(round(accuracySVC*100, 3)))
