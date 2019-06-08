@@ -44,7 +44,7 @@ documents = tweet_text
 #print(documents.head())
 #documents = documents.dropna(subset=['text'])
 
-train_x, valid_x, train_y, valid_y = model_selection.train_test_split(cdf['text'], cdf['tags'])
+train_x, valid_x, train_y, valid_y = model_selection.train_test_split(cdf['text'], cdf['tags'], random_state = 0)
 
 encoder = preprocessing.LabelEncoder()
 train_y = encoder.fit_transform(train_y)
@@ -84,10 +84,10 @@ def train_model(clf, x_train, y_train, x_test, y_test):
     clf = clf.fit(x_train, y_train)    
     pred = clf.predict(x_test)    
     
-    tweet = "This is a tweet about Science and Technology, wow!"
-    print("Predicting tweet: {}".format(tweet))
-    custom_pred = clf.predict(count_vect.transform([tweet]))
-    print("Result: {}".format(encoder.inverse_transform(custom_pred)))
+    #tweet = "This is a tweet about Science and Technology, wow!"
+    #print("Predicting tweet: {}".format(tweet))
+    #custom_pred = clf.predict(count_vect.transform([tweet]))
+   # print("Result: {}".format(encoder.inverse_transform(custom_pred)))
     
     return metrics.accuracy_score(pred, y_test)
 
@@ -101,3 +101,23 @@ print()
 print ("~ Using Linear SVC ~ ")
 accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y)
 print ("Accuracy: {}%".format(round(accuracySVC*100, 3)))
+
+NBvalues = []
+SVCvalues = []
+ALPHAS = [0.001, 0.005, 0.007, 0.01, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75]
+length = len(ALPHAS)
+print("*******")
+for i in range(length):
+    SVCvalues.append(train_model(svm.LinearSVC(C=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
+    NBvalues.append(train_model(naive_bayes.MultinomialNB(alpha=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
+    print('Alpha = {:.2f}\n'
+         .format(ALPHAS[i]))
+    print ("Accuracy: {}%".format(round(NBvalues[i]*100, 3)))
+
+plt.plot(ALPHAS, NBvalues,'r')
+plt.plot(ALPHAS, SVCvalues, 'g')
+
+plt.xlabel("ALPHAS")
+plt.ylabel("Accuracy")
+
+plt.show()
