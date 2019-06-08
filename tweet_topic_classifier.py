@@ -2,23 +2,15 @@
 """
 Created on Tue Jun  4 14:25:08 2019
 
-@author: Shayan
+@author: Shayan, Kumail, Ehtasham
 """
 
 import pandas as pd
-import sys
 import gensim
-from gensim.utils import simple_preprocess
-from gensim.parsing.preprocessing import STOPWORDS
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
-from nltk.stem.porter import *
-import nltk
-
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
-
 import matplotlib.pyplot as plt
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from sklearn import decomposition, ensemble
+from sklearn.feature_extraction.text import CountVectorizer
 
 # Load spreadsheet with tweets of all users
 df = pd.read_excel('Twitter_timeline.xlsx', sheet_name=None, ignore_index=True, sort=True)
@@ -92,6 +84,21 @@ def train_model(clf, x_train, y_train, x_test, y_test, verbose=False):
     
     return metrics.accuracy_score(pred, y_test)
 
+NBvalues = []
+SVCvalues = []
+LogRegvalues = []
+ALPHAS = [0.001, 0.005, 0.007, 0.01, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4]
+length = len(ALPHAS)
+print("*******")
+for i in range(length):
+    SVCvalues.append(train_model(svm.LinearSVC(C=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
+    NBvalues.append(train_model(naive_bayes.MultinomialNB(alpha=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
+    LogRegvalues.append(train_model(linear_model.LogisticRegression(C=ALPHAS[i], solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y))
+    print('Alpha = {:.2f}'
+         .format(ALPHAS[i]))
+    print ("Accuracy: {}%\n".format(round(NBvalues[i]*100, 3)))
+
+
 #NB
 print ("~ Using Naive Bayes ~ ")
 accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
@@ -106,25 +113,17 @@ print ("Accuracy: {}%".format(round(accuracySVC*100, 3)))
 #SVC
 print()
 print ("~ Using Logistic Regression ~ ")
-accuracySVC = train_model(linear_model.LogisticRegression(solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
+accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(round(accuracySVC*100, 3)))
 
-NBvalues = []
-SVCvalues = []
-ALPHAS = [0.001, 0.005, 0.007, 0.01, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4]
-length = len(ALPHAS)
-print("*******")
-for i in range(length):
-    SVCvalues.append(train_model(svm.LinearSVC(C=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
-    NBvalues.append(train_model(naive_bayes.MultinomialNB(alpha=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
-    print('Alpha = {:.2f}'
-         .format(ALPHAS[i]))
-    print ("Accuracy: {}%\n".format(round(NBvalues[i]*100, 3)))
 
-plt.plot(ALPHAS, NBvalues,'r')
-plt.plot(ALPHAS, SVCvalues, 'g')
-
+plt.style.use('ggplot')
+plt.plot(ALPHAS, NBvalues,'r', label="Naive Bayes")
+plt.plot(ALPHAS, SVCvalues, 'g', label="LinearSVC")
+plt.plot(ALPHAS, LogRegvalues, 'b', label="Log Reg")
+plt.legend()
 plt.xlabel("ALPHAS")
 plt.ylabel("Accuracy")
+
 
 plt.show()
