@@ -84,46 +84,101 @@ def train_model(clf, x_train, y_train, x_test, y_test, verbose=False):
     
     return metrics.accuracy_score(pred, y_test)
 
-NBvalues = []
-SVCvalues = []
-LogRegvalues = []
-ALPHAS = [0.001, 0.005, 0.007, 0.01, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4]
-length = len(ALPHAS)
-print("*******")
-for i in range(length):
-    SVCvalues.append(train_model(svm.LinearSVC(C=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
-    NBvalues.append(train_model(naive_bayes.MultinomialNB(alpha=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
-    LogRegvalues.append(train_model(linear_model.LogisticRegression(C=ALPHAS[i], solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y))
-    print('Alpha = {:.2f}'
-         .format(ALPHAS[i]))
-    print ("Accuracy: {}%\n".format(round(NBvalues[i]*100, 3)))
+#NBvalues = []
+#SVCvalues = []
+#LogRegvalues = []
+#ALPHAS = [0.001, 0.005, 0.007, 0.01, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4]
+#length = len(ALPHAS)
+#print("*******")
+#for i in range(length):
+#    SVCvalues.append(train_model(svm.LinearSVC(C=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
+#    NBvalues.append(train_model(naive_bayes.MultinomialNB(alpha=ALPHAS[i]), xtrain_count, train_y, xvalid_count, valid_y))
+#    LogRegvalues.append(train_model(linear_model.LogisticRegression(C=ALPHAS[i], solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y))
+#    print('Alpha = {:.2f}'
+#         .format(ALPHAS[i]))
+#    print ("Accuracy: {}%\n".format(round(NBvalues[i]*100, 3)))
 
+
+def formatAccuracy(acc):
+    return round(acc*100, 3)
 
 #NB
 print ("~ Using Naive Bayes ~ ")
 accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
-print ("Accuracy: {}%".format(round(accuracyNB*100, 3)))
+print ("Accuracy: {}%".format(formatAccuracy(accuracyNB)))
 
 #SVC
 print()
 print ("~ Using Linear SVC ~ ")
 accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
-print ("Accuracy: {}%".format(round(accuracySVC*100, 3)))
+print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
 
 #SVC
 print()
 print ("~ Using Logistic Regression ~ ")
 accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
-print ("Accuracy: {}%".format(round(accuracySVC*100, 3)))
+print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
 
 
-plt.style.use('ggplot')
-plt.plot(ALPHAS, NBvalues,'r', label="Naive Bayes")
-plt.plot(ALPHAS, SVCvalues, 'g', label="LinearSVC")
-plt.plot(ALPHAS, LogRegvalues, 'b', label="Log Reg")
-plt.legend()
-plt.xlabel("ALPHAS")
-plt.ylabel("Accuracy")
+NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
+SVCModel = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y)
+LRModel = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y)
+
+def majority_voting(x_train, y_train, x_test, y_test):    
+    NBPredict = NBModel.predict(x_test)
+    SVCPredict = SVCModel.predict(x_test)
+    LRPredict = LRModel.predict(x_test)
+#    
+    votingPred = []
+    
+    for i in range(len(y_test)):
+        if NBPredict[i] == LRPredict[i] and NBPredict[i] == SVCPredict[i]:
+            votingPred.append(NBPredict[i])
+        elif NBPredict[i] == LRPredict[i] or NBPredict[i] == SVCPredict[i]:
+            votingPred.append(NBPredict[i])
+        elif LRPredict[i] == SVCPredict[i]:
+            votingPred.append(LRPredict[i])
+        else:
+            votingPred.append(SVCPredict[i])
+           
+    return metrics.accuracy_score(votingPred, y_test)
+
+def majorityVotingPredictor(inputX):
+    NBPredict = NBModel.predict(count_vect.transform([inputX]))
+    SVCPredict = SVCModel.predict(count_vect.transform([inputX]))
+    LRPredict = LRModel.predict(count_vect.transform([inputX]))
+    
+    if NBPredict == LRPredict and NBPredict == SVCPredict:
+        finalPred = NBPredict
+    elif NBPredict == LRPredict or NBPredict == SVCPredict:
+        finalPred = NBPredict
+    elif LRPredict == SVCPredict:
+        finalPred = LRPredict
+    else:
+        finalPred = SVCPredict
+    
+    return encoder.inverse_transform(finalPred)
+    
+    
+
+#SVC
+print()
+print ("~ Using Majority Voting ~ ")
+votingAccuracy = majority_voting(xtrain_count, train_y, xvalid_count, valid_y)
+print ("Accuracy: {}%".format(formatAccuracy(votingAccuracy)))
 
 
-plt.show()
+custom_input = "Tweet about science and technology!"
+result = majorityVotingPredictor(custom_input)
+print("Predicting tweet: {}".format(custom_input))
+print(result)
+#plt.style.use('ggplot')
+#plt.plot(ALPHAS, NBvalues,'r', label="Naive Bayes")
+#plt.plot(ALPHAS, SVCvalues, 'g', label="LinearSVC")
+#plt.plot(ALPHAS, LogRegvalues, 'b', label="Log Reg")
+#plt.legend()
+#plt.xlabel("ALPHAS")
+#plt.ylabel("Accuracy")
+
+
+#plt.show()
