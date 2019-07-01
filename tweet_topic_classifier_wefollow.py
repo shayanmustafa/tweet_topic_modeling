@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun  4 14:25:08 2019
-
-@author: Shayan, Kumail, Ehtasham
-"""
-
 import pandas as pd
 import gensim
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
@@ -14,23 +7,32 @@ import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 
 # Load spreadsheet with tweets of all users
-df = pd.read_excel('Twitter_timeline.xlsx', sheet_name=None, ignore_index=True, sort=True)
-cdf = pd.concat(df.values(), ignore_index=True, sort=False)
+tags = {}
+tags['BN'] = 'business'
+tags['EN'] = 'entertainment'
+tags['ST'] = 'science_and_technology'
+tags['PT'] = 'politics'
+tags['ED'] = 'education'
+tags['HT'] = 'health'
+tags['RE'] = 'religion'
+tags['SI'] = 'social_issues'
+tags['SP'] = 'sports'
 
-#print("Number of tweets before removing invalid data: {0}".format(cdf.shape[0]))
-#drop unnecessary attributes
+cdf = pd.DataFrame()
+
+for tag in tags:
+    df = pd.read_excel('wefollow/'+tags[tag]+'_timlines.xlsx', sheet_name=None, ignore_index=True, sort=True)
+    temp_df = pd.concat(df.values(), ignore_index=True, sort=False)
+    temp_df['tags'] = tag
+    cdf = cdf.append(temp_df, ignore_index=True)
+
+print("Number of tweets before removing invalid data: {0}".format(cdf.shape[0]))
+
 cdf.drop(["id", "source", "created_at"], axis=1, inplace=True)
-#fill null columns of "tags"
-cdf["tags"].fillna(cdf[cdf.columns[2]], inplace=True)
-#drop extra tag column
-cdf.drop(cdf.columns[2], axis=1, inplace=True)
-cdf.dropna(inplace=True)
-cdf = cdf[cdf.tags != "RJ"]
-cdf = cdf[cdf.tags != "Rj"]
-cdf = cdf[cdf.tags != "ET"]
-cdf = cdf[cdf.tags != "EH"]
-cdf = cdf[cdf.tags != "RH"]
-
+#cdf["tags"].fillna(cdf[cdf.columns[2]], inplace=True)
+#cdf.drop(cdf.columns[2], axis=1, inplace=True)
+#cdf.dropna(inplace=True)
+#
 tweet_text = cdf[['text', 'tags']]
 tweet_text['id'] = tweet_text.index
 documents = tweet_text
