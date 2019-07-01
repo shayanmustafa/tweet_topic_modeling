@@ -9,6 +9,7 @@ import pandas as pd
 import gensim
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
+from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -119,22 +120,28 @@ print ("~ Using Logistic Regression ~ ")
 accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
 
+print()
+print ("~ Using Random Forest Classifier ~")
+accuracyRF = train_model(RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
+print ("Accuracy: {}%".format(formatAccuracy(accuracyRF)))
 
 NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
 SVCModel = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y)
 LRModel = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y)
+RFModel = RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0).fit(xtrain_count, train_y)
 
 def majority_voting(x_train, y_train, x_test, y_test):    
     NBPredict = NBModel.predict(x_test)
     SVCPredict = SVCModel.predict(x_test)
     LRPredict = LRModel.predict(x_test)
+    RFPredict = RFModel.predict(x_test)
 #    
     votingPred = []
     
     for i in range(len(y_test)):
-        if NBPredict[i] == LRPredict[i] and NBPredict[i] == SVCPredict[i]:
+        if NBPredict[i] == LRPredict[i] and NBPredict[i] == SVCPredict[i] and NBPredict[i] == RFPredict[i]:
             votingPred.append(NBPredict[i])
-        elif NBPredict[i] == LRPredict[i] or NBPredict[i] == SVCPredict[i]:
+        elif NBPredict[i] == LRPredict[i] or NBPredict[i] == SVCPredict[i] or NBPredict[i] == RFPredict[i]:
             votingPred.append(NBPredict[i])
         elif LRPredict[i] == SVCPredict[i]:
             votingPred.append(LRPredict[i])
