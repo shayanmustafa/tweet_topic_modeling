@@ -140,14 +140,18 @@ def majority_voting(x_train, y_train, x_test, y_test):
     votingPred = []
     
     for i in range(len(y_test)):
-        if NBPredict[i] == LRPredict[i] and NBPredict[i] == SVCPredict[i] and NBPredict[i] == RFPredict[i]:
-            votingPred.append(NBPredict[i])
-        elif NBPredict[i] == LRPredict[i] or NBPredict[i] == SVCPredict[i] or NBPredict[i] == RFPredict[i]:
-            votingPred.append(NBPredict[i])
-        elif LRPredict[i] == SVCPredict[i]:
-            votingPred.append(LRPredict[i])
-        else:
-            votingPred.append(SVCPredict[i])
+        for_pred = [NBPredict[i], LRPredict[i], SVCPredict[i], RFPredict[i]]
+        highest = for_pred[0]
+        count = 0
+        for current_pred in for_pred: 
+            new_count = 0
+            for test_pred in for_pred:
+                if current_pred == test_pred:
+                    new_count = new_count + 1
+            if new_count > count:
+                highest = current_pred
+                count = new_count
+        votingPred.append(highest)
            
     return metrics.accuracy_score(votingPred, y_test)
 
@@ -155,17 +159,26 @@ def majorityVotingPredictor(inputX):
     NBPredict = NBModel.predict(count_vect.transform([inputX]))
     SVCPredict = SVCModel.predict(count_vect.transform([inputX]))
     LRPredict = LRModel.predict(count_vect.transform([inputX]))
+    RFPredict = RFModel.predict(count_vect.transform([inputX]))
     
-    if NBPredict == LRPredict and NBPredict == SVCPredict:
-        finalPred = NBPredict
-    elif NBPredict == LRPredict or NBPredict == SVCPredict:
-        finalPred = NBPredict
-    elif LRPredict == SVCPredict:
-        finalPred = LRPredict
-    else:
-        finalPred = SVCPredict
+    print("NB: {}".format(encoder.inverse_transform(NBPredict)))
+    print("SVC: {}".format(encoder.inverse_transform(SVCPredict)))
+    print("LR: {}".format(encoder.inverse_transform(LRPredict)))
+    print("RF: {}".format(encoder.inverse_transform(RFPredict)))
     
-    return encoder.inverse_transform(finalPred)
+    for_pred = [NBPredict, LRPredict, SVCPredict, RFPredict]
+    highest = for_pred[0]
+    count = 0
+    for current_pred in for_pred: 
+        new_count = 0
+        for test_pred in for_pred:
+            if current_pred == test_pred:
+                new_count = new_count + 1
+        if new_count > count:
+            highest = current_pred
+            count = new_count
+    
+    return encoder.inverse_transform(highest)
     
     
 
@@ -176,7 +189,7 @@ votingAccuracy = majority_voting(xtrain_count, train_y, xvalid_count, valid_y)
 print ("Accuracy: {}%".format(formatAccuracy(votingAccuracy)))
 
 
-custom_input = "Tweet about science and technology!"
+custom_input = "What a confusing tweet, what could it be about?"
 result = majorityVotingPredictor(custom_input)
 print("Predicting tweet: {}".format(custom_input))
 print(result)
