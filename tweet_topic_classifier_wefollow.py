@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun  4 14:25:08 2019
-
-@author: Shayan, Kumail, Ehtasham
-"""
-
 import pandas as pd
 import gensim
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
@@ -12,45 +5,37 @@ from sklearn import model_selection, preprocessing, linear_model, naive_bayes, m
 from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
-import tensorflow as tf
-import numpy as np
-
-from sklearn.preprocessing import LabelBinarizer, LabelEncoder
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import classification_report
-
-from tensorflow import keras
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Dropout
-from keras.preprocessing import text, sequence
-from keras import utils
-
-import nltk
 
 # Load spreadsheet with tweets of all users
-df = pd.read_excel('Twitter_timeline.xlsx', sheet_name=None, ignore_index=True, sort=True)
-cdf = pd.concat(df.values(), ignore_index=True, sort=False)
+tags = {}
+tags['BN'] = 'business'
+tags['EN'] = 'entertainment'
+tags['ST'] = 'science_and_technology'
+tags['PT'] = 'politics'
+tags['ED'] = 'education'
+tags['HT'] = 'health'
+tags['RE'] = 'religion'
+tags['SI'] = 'social_issues'
+tags['SP'] = 'sports'
 
-#print("Number of tweets before removing invalid data: {0}".format(cdf.shape[0]))
-#drop unnecessary attributes
+cdf = pd.DataFrame()
+
+for tag in tags:
+    df = pd.read_excel('wefollow/'+tags[tag]+'_timlines.xlsx', sheet_name=None, ignore_index=True, sort=True)
+    temp_df = pd.concat(df.values(), ignore_index=True, sort=False)
+    temp_df['tags'] = tag
+    cdf = cdf.append(temp_df, ignore_index=True)
+
+print("Number of tweets before removing invalid data: {0}".format(cdf.shape[0]))
+
 cdf.drop(["id", "source", "created_at"], axis=1, inplace=True)
-#fill null columns of "tags"
-cdf["tags"].fillna(cdf[cdf.columns[2]], inplace=True)
-#drop extra tag column
-cdf.drop(cdf.columns[2], axis=1, inplace=True)
-cdf.dropna(inplace=True)
-cdf = cdf[cdf.tags != "RJ"]
-cdf = cdf[cdf.tags != "Rj"]
-cdf = cdf[cdf.tags != "ET"]
-cdf = cdf[cdf.tags != "EH"]
-cdf = cdf[cdf.tags != "RH"]
-
+#cdf["tags"].fillna(cdf[cdf.columns[2]], inplace=True)
+#cdf.drop(cdf.columns[2], axis=1, inplace=True)
+#cdf.dropna(inplace=True)
+#
 tweet_text = cdf[['text', 'tags']]
 tweet_text['id'] = tweet_text.index
 documents = tweet_text
-
-my_tags = ['ST', 'PT', 'HT', 'BN', 'ED', 'SP', 'EN', 'SI', 'RE', 'GM', 'NW', 'WB', 'RJ']
-
 #print(documents.head())
 #documents = documents.dropna(subset=['text'])
 
@@ -124,36 +109,24 @@ def formatAccuracy(acc):
 print ("~ Using Naive Bayes ~ ")
 accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracyNB)))
-clf = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y) 
-pred = clf.predict(xvalid_count)
-print(classification_report(valid_y, pred,target_names=my_tags))
 
 #SVC
 print()
 print ("~ Using Linear SVC ~ ")
 accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
-clf = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y) 
-pred = clf.predict(xvalid_count)
-print(classification_report(valid_y, pred,target_names=my_tags))
 
 #LR
 print()
 print ("~ Using Logistic Regression ~ ")
 accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
-clf = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y) 
-pred = clf.predict(xvalid_count)
-print(classification_report(valid_y, pred,target_names=my_tags))
 
 #RF
 print()
 print ("~ Using Random Forest Classifier ~")
 accuracyRF = train_model(RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracyRF)))
-clf = RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0).fit(xtrain_count, train_y) 
-pred = clf.predict(xvalid_count)
-print(classification_report(valid_y, pred,target_names=my_tags))
 
 NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
 SVCModel = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y)
@@ -169,18 +142,14 @@ def majority_voting(x_train, y_train, x_test, y_test):
     votingPred = []
     
     for i in range(len(y_test)):
-        for_pred = [NBPredict[i], LRPredict[i], SVCPredict[i], RFPredict[i]]
-        highest = for_pred[0]
-        count = 0
-        for current_pred in for_pred: 
-            new_count = 0
-            for test_pred in for_pred:
-                if current_pred == test_pred:
-                    new_count = new_count + 1
-            if new_count > count:
-                highest = current_pred
-                count = new_count
-        votingPred.append(highest)
+        if NBPredict[i] == LRPredict[i] and NBPredict[i] == SVCPredict[i] and NBPredict[i] == RFPredict[i]:
+            votingPred.append(NBPredict[i])
+        elif NBPredict[i] == LRPredict[i] or NBPredict[i] == SVCPredict[i] or NBPredict[i] == RFPredict[i]:
+            votingPred.append(NBPredict[i])
+        elif LRPredict[i] == SVCPredict[i]:
+            votingPred.append(LRPredict[i])
+        else:
+            votingPred.append(SVCPredict[i])
            
     return metrics.accuracy_score(votingPred, y_test)
 
@@ -188,26 +157,17 @@ def majorityVotingPredictor(inputX):
     NBPredict = NBModel.predict(count_vect.transform([inputX]))
     SVCPredict = SVCModel.predict(count_vect.transform([inputX]))
     LRPredict = LRModel.predict(count_vect.transform([inputX]))
-    RFPredict = RFModel.predict(count_vect.transform([inputX]))
     
-    print("NB: {}".format(encoder.inverse_transform(NBPredict)))
-    print("SVC: {}".format(encoder.inverse_transform(SVCPredict)))
-    print("LR: {}".format(encoder.inverse_transform(LRPredict)))
-    print("RF: {}".format(encoder.inverse_transform(RFPredict)))
+    if NBPredict == LRPredict and NBPredict == SVCPredict:
+        finalPred = NBPredict
+    elif NBPredict == LRPredict or NBPredict == SVCPredict:
+        finalPred = NBPredict
+    elif LRPredict == SVCPredict:
+        finalPred = LRPredict
+    else:
+        finalPred = SVCPredict
     
-    for_pred = [NBPredict, LRPredict, SVCPredict, RFPredict]
-    highest = for_pred[0]
-    count = 0
-    for current_pred in for_pred: 
-        new_count = 0
-        for test_pred in for_pred:
-            if current_pred == test_pred:
-                new_count = new_count + 1
-        if new_count > count:
-            highest = current_pred
-            count = new_count
-    
-    return encoder.inverse_transform(highest)
+    return encoder.inverse_transform(finalPred)
     
     
 
@@ -218,7 +178,7 @@ votingAccuracy = majority_voting(xtrain_count, train_y, xvalid_count, valid_y)
 print ("Accuracy: {}%".format(formatAccuracy(votingAccuracy)))
 
 
-custom_input = "What a confusing tweet, what could it be about?"
+custom_input = "Tweet about science and technology!"
 result = majorityVotingPredictor(custom_input)
 print("Predicting tweet: {}".format(custom_input))
 print(result)
