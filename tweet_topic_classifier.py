@@ -12,6 +12,20 @@ from sklearn import model_selection, preprocessing, linear_model, naive_bayes, m
 from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
+import tensorflow as tf
+import numpy as np
+
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+
+from tensorflow import keras
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+from keras.preprocessing import text, sequence
+from keras import utils
+
+import nltk
 
 # Load spreadsheet with tweets of all users
 df = pd.read_excel('Twitter_timeline.xlsx', sheet_name=None, ignore_index=True, sort=True)
@@ -34,6 +48,9 @@ cdf = cdf[cdf.tags != "RH"]
 tweet_text = cdf[['text', 'tags']]
 tweet_text['id'] = tweet_text.index
 documents = tweet_text
+
+my_tags = ['ST', 'PT', 'HT', 'BN', 'ED', 'SP', 'EN', 'SI', 'RE', 'GM', 'NW', 'WB', 'RJ']
+
 #print(documents.head())
 #documents = documents.dropna(subset=['text'])
 
@@ -107,23 +124,35 @@ def formatAccuracy(acc):
 print ("~ Using Naive Bayes ~ ")
 accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracyNB)))
+clf = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 #SVC
 print()
 print ("~ Using Linear SVC ~ ")
 accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
+clf = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 #SVC
 print()
 print ("~ Using Logistic Regression ~ ")
 accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
+clf = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 print()
 print ("~ Using Random Forest Classifier ~")
 accuracyRF = train_model(RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracyRF)))
+clf = RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0).fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
 SVCModel = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y)
