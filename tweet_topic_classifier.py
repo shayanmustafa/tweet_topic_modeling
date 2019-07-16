@@ -9,9 +9,24 @@ import pandas as pd
 import gensim
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
+from sklearn.ensemble import RandomForestClassifier
 import matplotlib.pyplot as plt
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_extraction.text import CountVectorizer
+import tensorflow as tf
+import numpy as np
+
+from sklearn.preprocessing import LabelBinarizer, LabelEncoder
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+
+from tensorflow import keras
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+from keras.preprocessing import text, sequence
+from keras import utils
+
+import nltk
 
 # Load spreadsheet with tweets of all users
 df = pd.read_excel('Twitter_timeline.xlsx', sheet_name=None, ignore_index=True, sort=True)
@@ -34,6 +49,9 @@ cdf = cdf[cdf.tags != "RH"]
 tweet_text = cdf[['text', 'tags']]
 tweet_text['id'] = tweet_text.index
 documents = tweet_text
+
+my_tags = ['ST', 'PT', 'HT', 'BN', 'ED', 'SP', 'EN', 'SI', 'RE', 'GM', 'NW', 'WB', 'RJ']
+
 #print(documents.head())
 #documents = documents.dropna(subset=['text'])
 
@@ -107,19 +125,36 @@ def formatAccuracy(acc):
 print ("~ Using Naive Bayes ~ ")
 accuracyNB = train_model(naive_bayes.MultinomialNB(alpha=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracyNB)))
+clf = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 #SVC
 print()
 print ("~ Using Linear SVC ~ ")
 accuracySVC = train_model(svm.LinearSVC(C=0.1), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
+clf = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
-#SVC
+#LR
 print()
 print ("~ Using Logistic Regression ~ ")
 accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial'), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
+clf = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
+#RF
+print()
+print ("~ Using Random Forest Classifier ~")
+accuracyRF = train_model(RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0), xtrain_count, train_y, xvalid_count, valid_y, verbose=True)
+print ("Accuracy: {}%".format(formatAccuracy(accuracyRF)))
+clf = RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0).fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 #LDA
 print()
@@ -132,24 +167,29 @@ NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
 SVCModel = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y)
 LRModel = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y)
 LDAModel = LinearDiscriminantAnalysis().fit(xtrain_count.toarray(), train_y)
-
+RFModel = RandomForestClassifier(n_estimators=500, max_depth=200, random_state=0).fit(xtrain_count, train_y)
 
 def majority_voting(x_train, y_train, x_test, y_test):    
     NBPredict = NBModel.predict(x_test)
     SVCPredict = SVCModel.predict(x_test)
     LRPredict = LRModel.predict(x_test)
+    RFPredict = RFModel.predict(x_test)
 #    
     votingPred = []
     
     for i in range(len(y_test)):
-        if NBPredict[i] == LRPredict[i] and NBPredict[i] == SVCPredict[i]:
-            votingPred.append(NBPredict[i])
-        elif NBPredict[i] == LRPredict[i] or NBPredict[i] == SVCPredict[i]:
-            votingPred.append(NBPredict[i])
-        elif LRPredict[i] == SVCPredict[i]:
-            votingPred.append(LRPredict[i])
-        else:
-            votingPred.append(SVCPredict[i])
+        for_pred = [NBPredict[i], LRPredict[i], SVCPredict[i], RFPredict[i]]
+        highest = for_pred[0]
+        count = 0
+        for current_pred in for_pred: 
+            new_count = 0
+            for test_pred in for_pred:
+                if current_pred == test_pred:
+                    new_count = new_count + 1
+            if new_count > count:
+                highest = current_pred
+                count = new_count
+        votingPred.append(highest)
            
     return metrics.accuracy_score(votingPred, y_test)
 
@@ -157,17 +197,26 @@ def majorityVotingPredictor(inputX):
     NBPredict = NBModel.predict(count_vect.transform([inputX]))
     SVCPredict = SVCModel.predict(count_vect.transform([inputX]))
     LRPredict = LRModel.predict(count_vect.transform([inputX]))
+    RFPredict = RFModel.predict(count_vect.transform([inputX]))
     
-    if NBPredict == LRPredict and NBPredict == SVCPredict:
-        finalPred = NBPredict
-    elif NBPredict == LRPredict or NBPredict == SVCPredict:
-        finalPred = NBPredict
-    elif LRPredict == SVCPredict:
-        finalPred = LRPredict
-    else:
-        finalPred = SVCPredict
+    print("NB: {}".format(encoder.inverse_transform(NBPredict)))
+    print("SVC: {}".format(encoder.inverse_transform(SVCPredict)))
+    print("LR: {}".format(encoder.inverse_transform(LRPredict)))
+    print("RF: {}".format(encoder.inverse_transform(RFPredict)))
     
-    return encoder.inverse_transform(finalPred)
+    for_pred = [NBPredict, LRPredict, SVCPredict, RFPredict]
+    highest = for_pred[0]
+    count = 0
+    for current_pred in for_pred: 
+        new_count = 0
+        for test_pred in for_pred:
+            if current_pred == test_pred:
+                new_count = new_count + 1
+        if new_count > count:
+            highest = current_pred
+            count = new_count
+    
+    return encoder.inverse_transform(highest)
     
     
 
@@ -178,7 +227,7 @@ votingAccuracy = majority_voting(xtrain_count, train_y, xvalid_count, valid_y)
 print ("Accuracy: {}%".format(formatAccuracy(votingAccuracy)))
 
 
-custom_input = "Tweet about science and technology!"
+custom_input = "What a confusing tweet, what could it be about?"
 result = majorityVotingPredictor(custom_input)
 print("Predicting tweet: {}".format(custom_input))
 print(result)
