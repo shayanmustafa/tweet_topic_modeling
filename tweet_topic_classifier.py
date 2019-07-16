@@ -10,6 +10,7 @@ import gensim
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
 import matplotlib.pyplot as plt
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_extraction.text import CountVectorizer
 
 # Load spreadsheet with tweets of all users
@@ -120,9 +121,18 @@ accuracySVC = train_model(linear_model.LogisticRegression(C=1.0, solver='lbfgs',
 print ("Accuracy: {}%".format(formatAccuracy(accuracySVC)))
 
 
+#LDA
+print()
+print ("~ Using LDA ~ ")
+accuracyLDA = train_model(LinearDiscriminantAnalysis(), xtrain_count.toarray(), train_y, xvalid_count.toarray(), valid_y, verbose=True)
+print ("Accuracy: {}%".format(formatAccuracy(accuracyLDA)))
+
+
 NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
 SVCModel = svm.LinearSVC(C=0.1).fit(xtrain_count, train_y)
 LRModel = linear_model.LogisticRegression(C=1.0, solver='lbfgs', multi_class='multinomial').fit(xtrain_count, train_y)
+LDAModel = LinearDiscriminantAnalysis().fit(xtrain_count.toarray(), train_y)
+
 
 def majority_voting(x_train, y_train, x_test, y_test):    
     NBPredict = NBModel.predict(x_test)
