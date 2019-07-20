@@ -173,14 +173,14 @@ pred = LDAModel.predict(xvalid_count)
 print(classification_report(valid_y, pred,target_names=my_tags))
 
 #NN
-#print()
-#print ("~ Using NN ~ ")
-#clf = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1)
-#accuracyNN = train_model(clf, xtrain_count.toarray(), train_y, xvalid_count.toarray(), valid_y, verbose=True)
-#print ("Accuracy: {}%".format(formatAccuracy(accuracyNN)))
-#clf = clf.fit(xtrain_count, train_y) 
-#pred = clf.predict(xvalid_count)
-#print(classification_report(valid_y, pred,target_names=my_tags))
+print()
+print ("~ Using NN ~ ")
+clf = MLPClassifier(activation='relu', max_iter=800, solver='lbfgs', learning_rate_init=0.005, hidden_layer_sizes=(46, 44), random_state=1)
+accuracyNN = train_model(clf, xtrain_count.toarray(), train_y, xvalid_count.toarray(), valid_y, verbose=True)
+print ("Accuracy: {}%".format(formatAccuracy(accuracyNN)))
+clf = clf.fit(xtrain_count, train_y) 
+pred = clf.predict(xvalid_count)
+print(classification_report(valid_y, pred,target_names=my_tags))
 
 
 #NBModel = naive_bayes.MultinomialNB(alpha=0.1).fit(xtrain_count, train_y)
@@ -194,11 +194,12 @@ def majority_voting(x_train, y_train, x_test, y_test):
     SVCPredict = SVCModel.predict(x_test)
     LRPredict = LRModel.predict(x_test)
     RFPredict = RFModel.predict(x_test)
+    NNPredict = clf.predict(x_test)
 #    
     votingPred = []
     
     for i in range(len(y_test)):
-        for_pred = [NBPredict[i], LRPredict[i], SVCPredict[i], RFPredict[i]]
+        for_pred = [NBPredict[i], LRPredict[i], SVCPredict[i], RFPredict[i], NNPredict[i]]
         highest = for_pred[0]
         count = 0
         for current_pred in for_pred: 
@@ -218,13 +219,15 @@ def majorityVotingPredictor(inputX):
     SVCPredict = SVCModel.predict(count_vect.transform([inputX]))
     LRPredict = LRModel.predict(count_vect.transform([inputX]))
     RFPredict = RFModel.predict(count_vect.transform([inputX]))
+    NNPredict = clf.predict(count_vect.transform([inputX]))
     
     print("NB: {}".format(encoder.inverse_transform(NBPredict)))
     print("SVC: {}".format(encoder.inverse_transform(SVCPredict)))
     print("LR: {}".format(encoder.inverse_transform(LRPredict)))
     print("RF: {}".format(encoder.inverse_transform(RFPredict)))
+    print("NN: {}".format(encoder.inverse_transform(NNPredict)))
     
-    for_pred = [NBPredict, LRPredict, SVCPredict, RFPredict]
+    for_pred = [NBPredict, LRPredict, SVCPredict, RFPredict, NNPredict]
     highest = for_pred[0]
     count = 0
     for current_pred in for_pred: 
