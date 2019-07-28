@@ -48,14 +48,29 @@ cdf = cdf[cdf.tags != "EH"]
 cdf = cdf[cdf.tags != "RH"]
 cdf = cdf[cdf.tags != "RT"]
 
-tweet_text = cdf[['text', 'tags']]
-tweet_text['id'] = tweet_text.index
-documents = tweet_text
+#tweet_text = cdf[['text', 'tags']]
+#tweet_text['id'] = tweet_text.index
+#documents = tweet_text
 
 my_tags = ['ST', 'PT', 'HT', 'BN', 'ED', 'SP', 'EN', 'SI', 'RE', 'GM', 'NW', 'WB']
 
 #print(documents.head())
 #documents = documents.dropna(subset=['text'])
+
+stemmer = SnowballStemmer('english')
+
+def lemmatize_stemming(text_to_preprocess):
+    return stemmer.stem(WordNetLemmatizer().lemmatize(text_to_preprocess, pos='v'))
+
+def preprocess(text_to_preprocess):
+    result = []
+    for token in gensim.utils.simple_preprocess(text_to_preprocess):
+        if token not in gensim.parsing.preprocessing.STOPWORDS and len(token) > 3:
+            result.append(lemmatize_stemming(token))
+    return " ".join(result)
+
+
+cdf['text'] = cdf['text'].map(preprocess)
 
 train_x, valid_x, train_y, valid_y = model_selection.train_test_split(cdf['text'], cdf['tags'], random_state = 0)
 
@@ -76,21 +91,6 @@ xvalid_count =  count_vect.transform(valid_x)
 #X_train_tfidf = tfidf_transformer.fit_transform(xtrain_count)
 #X_valid_tfidf = tfidf_transformer.fit_transform(xvalid_count)
 
-stemmer = SnowballStemmer('english')
-
-def lemmatize_stemming(text_to_preprocess):
-    return stemmer.stem(WordNetLemmatizer().lemmatize(text_to_preprocess, pos='v'))
-
-def preprocess(text_to_preprocess):
-    result = []
-    for token in gensim.utils.simple_preprocess(text_to_preprocess):
-        if token not in gensim.parsing.preprocessing.STOPWORDS and len(token) > 3:
-            result.append(lemmatize_stemming(token))
-    return result
-
-
-processed_docs = documents['text'].map(preprocess)
-cdf['text'] = processed_docs
 
 
 def train_model(clf, x_train, y_train, x_test, y_test, verbose=False):
@@ -161,7 +161,7 @@ print ("Accuracy: {}%".format(formatAccuracy(accuracyRF)))
 RFModel = RFModel.fit(xtrain_count, train_y) 
 pred = RFModel.predict(xvalid_count)
 print(classification_report(valid_y, pred,target_names=my_tags))
-
+    
 #LDA
 print()
 print ("~ Using LDA ~ ")
@@ -175,11 +175,11 @@ print(classification_report(valid_y, pred,target_names=my_tags))
 #NN
 print()
 print ("~ Using NN ~ ")
-clf = MLPClassifier(activation='relu', max_iter=800, solver='lbfgs', learning_rate_init=0.005, hidden_layer_sizes=(46, 44), random_state=1)
-accuracyNN = train_model(clf, xtrain_count.toarray(), train_y, xvalid_count.toarray(), valid_y, verbose=True)
+NNModel = MLPClassifier(activation='relu', max_iter=800, solver='lbfgs', learning_rate_init=0.005, hidden_layer_sizes=(46, 44), random_state=1)
+accuracyNN = train_model(NNModel, xtrain_count.toarray(), train_y, xvalid_count.toarray(), valid_y, verbose=True)
 print ("Accuracy: {}%".format(formatAccuracy(accuracyNN)))
-clf = clf.fit(xtrain_count, train_y) 
-pred = clf.predict(xvalid_count)
+NNModel = NNModel.fit(xtrain_count, train_y) 
+pred = NNModel.predict(xvalid_count)
 print(classification_report(valid_y, pred,target_names=my_tags))
 
 
@@ -194,7 +194,7 @@ def majority_voting(x_train, y_train, x_test, y_test):
     SVCPredict = SVCModel.predict(x_test)
     LRPredict = LRModel.predict(x_test)
     RFPredict = RFModel.predict(x_test)
-    NNPredict = clf.predict(x_test)
+    NNPredict = NNModel.predict(x_test)
 #    
     votingPred = []
     
@@ -219,7 +219,7 @@ def majorityVotingPredictor(inputX):
     SVCPredict = SVCModel.predict(count_vect.transform([inputX]))
     LRPredict = LRModel.predict(count_vect.transform([inputX]))
     RFPredict = RFModel.predict(count_vect.transform([inputX]))
-    NNPredict = clf.predict(count_vect.transform([inputX]))
+    NNPredict = NNModel.predict(count_vect.transform([inputX]))
     
     print("NB: {}".format(encoder.inverse_transform(NBPredict)))
     print("SVC: {}".format(encoder.inverse_transform(SVCPredict)))
@@ -250,17 +250,7 @@ votingAccuracy = majority_voting(xtrain_count, train_y, xvalid_count, valid_y)
 print ("Accuracy: {}%".format(formatAccuracy(votingAccuracy)))
 
 
-custom_input = "What a confusing tweet, what could it be about?"
-result = majorityVotingPredictor(custom_input)
+custom_input = "This is a tweet about science and technology!"
 print("Predicting tweet: {}".format(custom_input))
-print(result)
-#plt.style.use('ggplot')
-#plt.plot(ALPHAS, NBvalues,'r', label="Naive Bayes")
-#plt.plot(ALPHAS, SVCvalues, 'g', label="LinearSVC")
-#plt.plot(ALPHAS, LogRegvalues, 'b', label="Log Reg")
-#plt.legend()
-#plt.xlabel("ALPHAS")
-#plt.ylabel("Accuracy")
-
-
-#plt.show()
+result = majorityVotingPredictor(preprocess(custom_input))
+print("Majority Voting: {}".format(result))
